@@ -24,6 +24,8 @@ the bottom — but the data is the up-to-date set published at
   **English** and **Bahasa Indonesia**.
 - Numeric age axis with collision-aware labels, hover tooltips, keyboard
   focusable cells, and a responsive layout (side panel → bottom sheet on mobile).
+- **Light / dark theme** that follows the system preference by default, with a
+  toggle to force either (no flash on load).
 
 ## Tech stack
 

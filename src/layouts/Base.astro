@@ -17,11 +17,26 @@ const base = import.meta.env.BASE_URL;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {/* Resolve the theme before first paint to avoid a flash of the wrong one. */}
+    <script is:inline>
+      (function () {
+        try {
+          var p = localStorage.getItem("zz_theme") || "system";
+          var dark =
+            p === "dark" ||
+            (p !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+        } catch (e) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#1c1917" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0c0a09" media="(prefers-color-scheme: dark)" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
@@ -32,7 +47,7 @@ const base = import.meta.env.BASE_URL;
       rel="stylesheet"
     />
   </head>
-  <body class="min-h-screen bg-stone-50 text-stone-800 antialiased">
+  <body class="min-h-screen bg-stone-50 text-stone-800 antialiased dark:bg-stone-950 dark:text-stone-200">
     <slot />
   </body>
 </html>

@@ -164,9 +164,9 @@ function openPanel(u: Unit) {
   const t = ui(lang);
   const en = u.label.en;
   const localized = nameOf(u);
-  const secondary = localized !== en ? `<span class="block text-sm font-normal text-stone-400">${esc(en)}</span>` : "";
-  const beginErr = u.beginningError ? ` <span class="text-stone-400">±${u.beginningError}</span>` : "";
-  const endErr = u.endError ? ` <span class="text-stone-400">±${u.endError}</span>` : "";
+  const secondary = localized !== en ? `<span class="block text-sm font-normal text-stone-400 dark:text-stone-500">${esc(en)}</span>` : "";
+  const beginErr = u.beginningError ? ` <span class="text-stone-400 dark:text-stone-500">±${u.beginningError}</span>` : "";
+  const endErr = u.endError ? ` <span class="text-stone-400 dark:text-stone-500">±${u.endError}</span>` : "";
   const young = u.end === 0 ? t.present : `${maStr(u.end)}${endErr}`;
   const duration = u.beginning - u.end;
   const gssp = u.ratifiedGSSP
@@ -182,11 +182,11 @@ function openPanel(u: Unit) {
 
   panelBody.innerHTML = `
     <div class="mb-3 flex items-start justify-between gap-2">
-      <h2 class="text-xl font-bold leading-tight text-stone-900">
+      <h2 class="text-xl font-bold leading-tight text-stone-900 dark:text-stone-100">
         <span class="inline-block h-3 w-3 translate-y-px rounded-sm align-baseline" style="background:${u.color}"></span>
         ${esc(localized)} ${secondary}
       </h2>
-      <button type="button" id="panel-close" class="rounded-md p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600 lg:hidden" aria-label="${t.panel.close}">
+      <button type="button" id="panel-close" class="rounded-md p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600 lg:hidden dark:text-stone-500 dark:hover:bg-stone-800 dark:hover:text-stone-300" aria-label="${t.panel.close}">
         <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 5 10 10M15 5 5 15" stroke-linecap="round"/></svg>
       </button>
     </div>
@@ -198,11 +198,11 @@ function openPanel(u: Unit) {
       <div class="ts-field"><dt>${t.panel.duration}</dt><dd class="tabular-nums">${formatMa(duration)} ${t.myr}</dd></div>
       ${parent}
       ${kids}
-      <div class="ts-field"><dt>${t.panel.definition}</dt><dd class="text-stone-600">${esc(definitionFor(meta.definitionTemplates[lang] || meta.definitionTemplates.en, u.beginningStr, u.endStr))}</dd></div>
+      <div class="ts-field"><dt>${t.panel.definition}</dt><dd class="text-stone-600 dark:text-stone-300">${esc(definitionFor(meta.definitionTemplates[lang] || meta.definitionTemplates.en, u.beginningStr, u.endStr))}</dd></div>
     </dl>
-    <div class="mt-4 flex items-center gap-3 border-t border-stone-100 pt-3">
-      <button type="button" id="panel-zoom" class="rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700">⤢ ${esc(t.zoom)}</button>
-      <a href="${meta.source}" target="_blank" rel="noopener" class="text-sm text-teal-700 underline-offset-2 hover:underline">${t.panel.source} ↗</a>
+    <div class="mt-4 flex items-center gap-3 border-t border-stone-100 pt-3 dark:border-stone-800">
+      <button type="button" id="panel-zoom" class="rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600">⤢ ${esc(t.zoom)}</button>
+      <a href="${meta.source}" target="_blank" rel="noopener" class="text-sm text-teal-700 underline-offset-2 hover:underline dark:text-teal-400">${t.panel.source} ↗</a>
     </div>`;
   panel.setAttribute("data-open", "true");
 
@@ -230,17 +230,17 @@ function runSearch(q: string) {
     .sort((a, b) => a.depth - b.depth || a.beginning - b.beginning)
     .slice(0, 12);
   if (!matches.length) {
-    searchResults.innerHTML = `<li class="px-3 py-2 text-stone-400">${ui(lang).noResults}</li>`;
+    searchResults.innerHTML = `<li class="px-3 py-2 text-stone-400 dark:text-stone-500">${ui(lang).noResults}</li>`;
     searchResults.classList.remove("hidden");
     return;
   }
   searchResults.innerHTML = matches
     .map(
       (u) =>
-        `<li><button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-stone-50" data-goto="${u.id}">` +
+        `<li><button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-stone-50 dark:hover:bg-stone-700/60" data-goto="${u.id}">` +
         `<span class="h-3 w-3 shrink-0 rounded-sm" style="background:${u.color}"></span>` +
-        `<span class="min-w-0 flex-1 truncate font-medium text-stone-700">${esc(nameOf(u))}</span>` +
-        `<span class="shrink-0 text-xs text-stone-400">${esc(rankTitle(u))}</span></button></li>`,
+        `<span class="min-w-0 flex-1 truncate font-medium text-stone-700 dark:text-stone-200">${esc(nameOf(u))}</span>` +
+        `<span class="shrink-0 text-xs text-stone-400 dark:text-stone-500">${esc(rankTitle(u))}</span></button></li>`,
     )
     .join("");
   searchResults.classList.remove("hidden");
@@ -255,8 +255,8 @@ function updateChrome() {
     if (!host) continue;
     const r = t.ranks[d];
     host.innerHTML =
-      `<span class="text-[11px] font-semibold uppercase tracking-wide text-stone-600">${esc(r.title)}</span>` +
-      (r.chrono ? `<span class="text-[9px] uppercase tracking-wide text-stone-400">${esc(r.chrono)}</span>` : "");
+      `<span class="text-[11px] font-semibold uppercase tracking-wide text-stone-600 dark:text-stone-300">${esc(r.title)}</span>` +
+      (r.chrono ? `<span class="text-[9px] uppercase tracking-wide text-stone-400 dark:text-stone-500">${esc(r.chrono)}</span>` : "");
   }
   const setText = (sel: string, v: string) => {
     const n = document.querySelector(sel);
@@ -272,16 +272,17 @@ function updateChrome() {
   // refresh panel content if something is selected, else the prompt
   if (selectedId && byId.get(selectedId)) openPanel(byId.get(selectedId)!);
   else if (panelBody.querySelector("[data-i18n='prompt']") || !selectedId)
-    panelBody.innerHTML = `<p class="py-10 text-center text-sm text-stone-400" data-i18n="prompt">${esc(t.panel.prompt)}</p>`;
+    panelBody.innerHTML = `<p class="py-10 text-center text-sm text-stone-400 dark:text-stone-500" data-i18n="prompt">${esc(t.panel.prompt)}</p>`;
 }
 
 function updateScaleButtons() {
   document.querySelectorAll<HTMLButtonElement>(".ts-scale").forEach((b) => {
     const active = b.dataset.scale === mode;
+    // Active = white pill (reads well on both light and dark tracks); inactive
+    // falls back to the muted token defined in .ts-scale.
     b.classList.toggle("bg-white", active);
     b.classList.toggle("text-teal-700", active);
     b.classList.toggle("shadow-sm", active);
-    b.classList.toggle("text-stone-500", !active);
   });
 }
 
@@ -351,6 +352,7 @@ langSelect.addEventListener("change", () => {
   lang = langSelect.value;
   localStorage.setItem("zz_lang", lang);
   updateChrome();
+  applyTheme(); // refresh the (localized) theme-button label
   render();
 });
 
@@ -373,10 +375,41 @@ addEventListener("keydown", (e) => {
   }
 });
 
+// --- theme (light / dark / follow system) -----------------------------------
+type ThemePref = "system" | "light" | "dark";
+const THEME_ICON: Record<ThemePref, string> = {
+  system: `<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>`,
+  light: `<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41"/></svg>`,
+  dark: `<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>`,
+};
+const themeBtn = $("#theme");
+const themeMql = matchMedia("(prefers-color-scheme: dark)");
+let themePref = (localStorage.getItem("zz_theme") as ThemePref) || "system";
+
+function applyTheme() {
+  const resolved = themePref === "system" ? (themeMql.matches ? "dark" : "light") : themePref;
+  document.documentElement.dataset.theme = resolved;
+  const t = ui(lang);
+  themeBtn.innerHTML = THEME_ICON[themePref];
+  const label = `${t.theme}: ${t.themes[themePref]}`;
+  themeBtn.title = label;
+  themeBtn.setAttribute("aria-label", label);
+}
+
+themeBtn.addEventListener("click", () => {
+  themePref = themePref === "system" ? "light" : themePref === "light" ? "dark" : "system";
+  localStorage.setItem("zz_theme", themePref);
+  applyTheme();
+});
+themeMql.addEventListener("change", () => {
+  if (themePref === "system") applyTheme();
+});
+
 // --- init -------------------------------------------------------------------
 langSelect.value = lang;
 updateScaleButtons();
 updateChrome();
+applyTheme();
 render();
 
 // deep link: #UnitId

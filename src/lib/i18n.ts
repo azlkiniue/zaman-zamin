@@ -41,6 +41,8 @@ export interface UIStrings {
   present: string;
   noResults: string;
   dataNote: string;
+  theme: string;
+  themes: { system: string; light: string; dark: string };
 }
 
 const en: UIStrings = {
@@ -84,6 +86,8 @@ const en: UIStrings = {
   present: "present",
   noResults: "No matching intervals",
   dataNote: "Data: ICS International Chronostratigraphic Chart",
+  theme: "Theme",
+  themes: { system: "System", light: "Light", dark: "Dark" },
 };
 
 const id: UIStrings = {
@@ -127,6 +131,8 @@ const id: UIStrings = {
   present: "sekarang",
   noResults: "Tidak ada interval yang cocok",
   dataNote: "Data: Bagan Kronostratigrafi Internasional ICS",
+  theme: "Tema",
+  themes: { system: "Sistem", light: "Terang", dark: "Gelap" },
 };
 
 const TABLE: Record<string, UIStrings> = { en, id };
