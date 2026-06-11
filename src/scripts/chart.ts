@@ -1,11 +1,13 @@
 import rawData from "../data/timescale.json";
 import {
   AXIS_MIN_GAP_PX,
-  CHART_HEIGHT,
+  DEFAULT_HEIGHT,
   LABEL_MIN_PX,
-  RANK_LEFT,
+  MAX_HEIGHT,
+  ageAtFrac,
   cellBox,
   formatMa,
+  frac,
   labelBand,
   yOf,
 } from "../lib/layout";
@@ -31,8 +33,11 @@ for (const u of units) {
 const maStr = (v: number) => maLex.get(v) ?? formatMa(v);
 
 // --- state ------------------------------------------------------------------
+// The age window is always the full timeline; "zoom" is the canvas height in px
+// (taller = zoomed in). This keeps the log/linear mapping exact at every level
+// and lets a tiny unit like the Holocene grow to a legible size by zooming.
 const FULL: ViewWindow = { young: 0, old: MAX_AGE };
-let view: ViewWindow = { ...FULL };
+let chartHeight = DEFAULT_HEIGHT;
 let mode: ScaleMode = (localStorage.getItem("zz_mode") as ScaleMode) || "log";
 let lang =
   localStorage.getItem("zz_lang") ||
@@ -47,10 +52,14 @@ const axis = $("#axis");
 const panel = $("#panel");
 const panelBody = $("#panel-body");
 const scroller = $("#chart-scroll");
+const rankBar = $("#rank-bar");
 const searchInput = $<HTMLInputElement>("#search");
 const searchResults = $("#search-results");
 const langSelect = $<HTMLSelectElement>("#lang");
 const resetBtn = $("#reset");
+const zoomSlider = $<HTMLInputElement>("#zoom-slider");
+const zoomInBtn = $("#zoom-in");
+const zoomOutBtn = $("#zoom-out");
 
 // --- helpers ----------------------------------------------------------------
 const esc = (s: string) =>
@@ -64,13 +73,13 @@ function spanText(u: Unit): string {
   return `${maStr(u.beginning)} – ${young} ${t.ma}`;
 }
 
-const isFull = () => view.young === FULL.young && view.old === FULL.old;
+const isZoomed = () => Math.abs(chartHeight - DEFAULT_HEIGHT) > 1;
 
 // --- chart render -----------------------------------------------------------
 function render() {
   const html: string[] = [];
   for (const u of units) {
-    const box = cellBox(u, view, mode);
+    const box = cellBox(u, FULL, mode, chartHeight);
     if (!box.visible) continue;
     const band = bandCache.get(u.id)!;
     const width = band.right - band.left;
@@ -87,20 +96,19 @@ function render() {
         `</button>`,
     );
   }
-  canvas.style.height = `${CHART_HEIGHT}px`;
-  axis.style.height = `${CHART_HEIGHT}px`;
+  canvas.style.height = `${chartHeight}px`;
+  axis.style.height = `${chartHeight}px`;
   canvas.innerHTML = html.join("");
   renderAxis();
   $("#chart-loading")?.remove();
-  resetBtn.classList.toggle("hidden", isFull());
+  resetBtn.classList.toggle("hidden", !isZoomed());
 }
 
 function renderAxis() {
   const vals = new Set<number>();
   for (const u of units) {
-    for (const v of [u.beginning, u.end]) {
-      if (v >= view.young - 1e-9 && v <= view.old + 1e-9) vals.add(v);
-    }
+    vals.add(u.beginning);
+    vals.add(u.end);
   }
   const sorted = [...vals].sort((a, b) => a - b);
   const selUnit = selectedId ? byId.get(selectedId) : null;
@@ -108,8 +116,8 @@ function renderAxis() {
   const ticks: { v: number; y: number; strong: boolean }[] = [];
   let lastY = -Infinity;
   for (const v of sorted) {
-    const y = yOf(v, view, mode);
-    if (y < -2 || y > CHART_HEIGHT + 2) continue;
+    const y = yOf(v, FULL, mode, chartHeight);
+    if (y < -2 || y > chartHeight + 2) continue;
     const strong = keep.has(v);
     if (!strong && y - lastY < AXIS_MIN_GAP_PX) continue;
     lastY = y;
@@ -124,33 +132,95 @@ function renderAxis() {
     .join("");
 }
 
-// --- selection / zoom -------------------------------------------------------
-function select(id: string, opts: { scroll?: boolean } = {}) {
-  selectedId = id;
+// --- zoom -------------------------------------------------------------------
+const SLIDER_STEPS = 1000; // resolution of the zoom slider
+const ZOOM_STEP = 1.7; // × / ÷ per +/− button press
+const TARGET_FILL = 0.78; // a zoomed-to unit fills ~78% of the visible chart
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+/** Height of the sticky rank-header bar that overlays the top of the scroller. */
+const headerH = () => rankBar?.offsetHeight ?? 44;
+/** Canvas height (px) at which the whole timeline fits the visible chart area. */
+const fitHeight = () => Math.max(240, scroller.clientHeight - headerH());
+/** Visible canvas band below the sticky header (px). */
+const usableH = () => scroller.clientHeight - headerH();
+
+// Map zoom (canvas height) ↔ slider position on a log scale, so each step is a
+// constant zoom ratio (map-like feel) between "fit everything" and MAX_HEIGHT.
+const sliderToHeight = (s: number) => {
+  const lo = Math.log(fitHeight());
+  const hi = Math.log(MAX_HEIGHT);
+  return Math.exp(lo + s * (hi - lo));
+};
+const heightToSlider = (h: number) => {
+  const lo = Math.log(fitHeight());
+  const hi = Math.log(MAX_HEIGHT);
+  return clamp((Math.log(h) - lo) / (hi - lo), 0, 1);
+};
+function syncSlider() {
+  zoomSlider.value = String(Math.round(heightToSlider(chartHeight) * SLIDER_STEPS));
+}
+
+/** Age (Ma) currently at the vertical centre of the visible chart area. */
+function centerAge() {
+  const yc = scroller.scrollTop + usableH() / 2;
+  return ageAtFrac(clamp(yc / chartHeight, 0, 1), FULL, mode);
+}
+/** Scroll so a given age sits at the vertical centre of the visible area. */
+function centerOnAge(age: number, smooth = false) {
+  const yc = yOf(age, FULL, mode, chartHeight);
+  const top = clamp(yc - usableH() / 2, 0, scroller.scrollHeight - scroller.clientHeight);
+  if (smooth) scroller.scrollTo({ top, behavior: "smooth" });
+  else scroller.scrollTop = top;
+}
+
+/** Set the zoom (canvas height), clamped, and repaint. */
+function applyHeight(h: number) {
+  chartHeight = clamp(h, fitHeight(), MAX_HEIGHT);
   render();
+}
+/** Zoom to a height while keeping the current centre age fixed (slider/buttons). */
+function zoomKeepingCenter(h: number, sync = true) {
+  const c = centerAge();
+  applyHeight(h);
+  centerOnAge(c);
+  if (sync) syncSlider();
+}
+
+// --- selection --------------------------------------------------------------
+function select(id: string, opts: { scroll?: boolean } = {}) {
+  const prev = selectedId;
+  selectedId = id;
+  // Only toggle the selection outline + axis — do NOT rebuild every cell. A full
+  // re-render on each click was replacing the DOM node mid-gesture, which is what
+  // broke native double-click-to-zoom.
+  if (prev !== id) {
+    if (prev)
+      canvas.querySelector(`[data-id="${CSS.escape(prev)}"]`)?.classList.remove("ts-selected");
+    canvas.querySelector(`[data-id="${CSS.escape(id)}"]`)?.classList.add("ts-selected");
+    renderAxis();
+  }
   openPanel(byId.get(id)!);
   history.replaceState(null, "", `#${id}`);
-  if (opts.scroll) {
-    const cell = canvas.querySelector(`[data-id="${CSS.escape(id)}"]`) as HTMLElement | null;
-    if (cell) {
-      const top = cell.offsetTop - scroller.clientHeight / 2 + cell.offsetHeight / 2;
-      scroller.scrollTo({ top, behavior: "smooth" });
-    }
-  }
+  if (opts.scroll) centerOnAge((byId.get(id)!.beginning + byId.get(id)!.end) / 2, true);
 }
 
-function zoomTo(u: Unit) {
-  const pad = Math.max((u.beginning - u.end) * 0.06, 0.0005);
-  view = { young: Math.max(0, u.end - pad), old: Math.min(MAX_AGE, u.beginning + pad) };
-  selectedId = u.id;
-  render();
+/** Zoom so a unit fills ~TARGET_FILL of the visible chart, then centre it. */
+function zoomToUnit(u: Unit) {
+  const f = frac(u.beginning, FULL, mode) - frac(u.end, FULL, mode);
+  selectedId = u.id; // set before applyHeight so the repaint marks it selected
+  applyHeight(f > 1e-9 ? (TARGET_FILL * usableH()) / f : MAX_HEIGHT);
+  centerOnAge((u.beginning + u.end) / 2);
+  syncSlider();
   openPanel(u);
-  scroller.scrollTo({ top: 0, behavior: "smooth" });
+  history.replaceState(null, "", `#${u.id}`);
 }
 
+/** Back to the default overview zoom (keeps the current selection). */
 function resetView() {
-  view = { ...FULL };
-  render();
+  applyHeight(DEFAULT_HEIGHT);
+  syncSlider();
+  scroller.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 // --- info panel -------------------------------------------------------------
@@ -207,7 +277,7 @@ function openPanel(u: Unit) {
   panel.setAttribute("data-open", "true");
 
   $("#panel-close")?.addEventListener("click", closePanel);
-  $("#panel-zoom")?.addEventListener("click", () => zoomTo(u));
+  $("#panel-zoom")?.addEventListener("click", () => zoomToUnit(u));
 }
 
 function closePanel() {
@@ -264,6 +334,14 @@ function updateChrome() {
   };
   setText('[data-i18n="tagline"]', t.tagline);
   setText('[data-i18n="zoomHint"]', t.zoomHint);
+  for (const [el, label] of [
+    [zoomInBtn, t.zoomIn],
+    [zoomOutBtn, t.zoomOut],
+    [zoomSlider, t.zoomLevel],
+  ] as const) {
+    el.setAttribute("title", label);
+    el.setAttribute("aria-label", label);
+  }
   searchInput.placeholder = t.searchPlaceholder;
   resetBtn.textContent = t.reset;
   document.querySelectorAll<HTMLButtonElement>(".ts-scale").forEach((b) => {
@@ -304,14 +382,24 @@ function moveTip(x: number, y: number) {
 }
 
 // --- events -----------------------------------------------------------------
+// Single click selects; a second click on the same cell within DBLCLICK_MS zooms
+// to fit it. We detect the double-click ourselves (rather than relying on the
+// native `dblclick` event) so it works regardless of re-renders between clicks.
+const DBLCLICK_MS = 350;
+let lastClickId: string | null = null;
+let lastClickAt = 0;
 canvas.addEventListener("click", (e) => {
   const cell = (e.target as HTMLElement).closest(".ts-cell") as HTMLElement | null;
-  if (cell?.dataset.id) select(cell.dataset.id);
-});
-canvas.addEventListener("dblclick", (e) => {
-  const cell = (e.target as HTMLElement).closest(".ts-cell") as HTMLElement | null;
-  const u = cell?.dataset.id ? byId.get(cell.dataset.id) : null;
-  if (u) zoomTo(u);
+  const id = cell?.dataset.id;
+  if (!id) return;
+  const now = performance.now();
+  const isDouble = id === lastClickId && now - lastClickAt < DBLCLICK_MS;
+  lastClickAt = now;
+  lastClickId = isDouble ? null : id; // reset so a 3rd click starts fresh
+  const u = byId.get(id);
+  if (!u) return;
+  if (isDouble) zoomToUnit(u);
+  else select(id);
 });
 canvas.addEventListener("mousemove", (e) => {
   const cell = (e.target as HTMLElement).closest(".ts-cell") as HTMLElement | null;
@@ -341,10 +429,12 @@ document.addEventListener("click", (e) => {
 
 document.querySelectorAll<HTMLButtonElement>(".ts-scale").forEach((b) =>
   b.addEventListener("click", () => {
+    const c = centerAge(); // log↔linear remaps positions; keep the centre fixed
     mode = (b.dataset.scale as ScaleMode) || "log";
     localStorage.setItem("zz_mode", mode);
     updateScaleButtons();
     render();
+    centerOnAge(c);
   }),
 );
 
@@ -357,6 +447,52 @@ langSelect.addEventListener("change", () => {
 });
 
 resetBtn.addEventListener("click", resetView);
+
+// --- zoom control (slider + buttons + pinch / ctrl-wheel) -------------------
+zoomSlider.addEventListener("input", () => {
+  zoomKeepingCenter(sliderToHeight(+zoomSlider.value / SLIDER_STEPS), false);
+});
+zoomInBtn.addEventListener("click", () => zoomKeepingCenter(chartHeight * ZOOM_STEP));
+zoomOutBtn.addEventListener("click", () => zoomKeepingCenter(chartHeight / ZOOM_STEP));
+
+// Trackpad pinch and Ctrl/⌘-wheel zoom around the cursor (macOS maps pinch to a
+// ctrl-wheel event). Plain wheel keeps scrolling/panning the chart.
+scroller.addEventListener(
+  "wheel",
+  (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    const rect = scroller.getBoundingClientRect();
+    const cursorY = e.clientY - rect.top; // viewport-relative
+    const cursorAge = ageAtFrac(
+      clamp((scroller.scrollTop + cursorY - headerH()) / chartHeight, 0, 1),
+      FULL,
+      mode,
+    );
+    applyHeight(chartHeight * Math.exp(-e.deltaY * 0.0015));
+    // keep cursorAge pinned under the cursor
+    const yc = yOf(cursorAge, FULL, mode, chartHeight);
+    scroller.scrollTop = clamp(
+      headerH() + yc - cursorY,
+      0,
+      scroller.scrollHeight - scroller.clientHeight,
+    );
+    syncSlider();
+  },
+  { passive: false },
+);
+
+// Keep the zoom sensible when the viewport resizes (fit bound depends on it).
+let resizeRAF = 0;
+addEventListener("resize", () => {
+  cancelAnimationFrame(resizeRAF);
+  resizeRAF = requestAnimationFrame(() => {
+    const c = centerAge();
+    applyHeight(chartHeight); // re-clamp against the new fit height
+    centerOnAge(c);
+    syncSlider();
+  });
+});
 
 searchInput.addEventListener("input", () => runSearch(searchInput.value));
 searchInput.addEventListener("focus", () => runSearch(searchInput.value));
@@ -410,12 +546,13 @@ langSelect.value = lang;
 updateScaleButtons();
 updateChrome();
 applyTheme();
-render();
+applyHeight(DEFAULT_HEIGHT);
+syncSlider();
 
 // deep link: #UnitId
 const hashId = decodeURIComponent(location.hash.slice(1));
 if (hashId && byId.has(hashId)) {
   const u = byId.get(hashId)!;
-  if (u.depth >= 3) zoomTo(u);
+  if (u.depth >= 3) zoomToUnit(u);
   else select(u.id, { scroll: true });
 }

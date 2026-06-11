@@ -1,7 +1,17 @@
 import type { ScaleMode, Unit, ViewWindow } from "./types";
 
-/** Tall, scrollable drawing canvas (px). Young time at the top. */
-export const CHART_HEIGHT = 4600;
+/**
+ * Default vertical zoom of the scrollable drawing canvas (px). Young time at the
+ * top. Zoom is expressed purely as canvas height: taller = zoomed in. The age
+ * window always spans the full timeline, so the log/linear mapping stays exact
+ * at every zoom level (no faked cell sizes).
+ */
+export const DEFAULT_HEIGHT = 4600;
+/**
+ * Deepest zoom-in (px). Tall enough that even the ~4 kyr Holocene sub-stages
+ * become legible and labelled, while keeping the scroll height manageable.
+ */
+export const MAX_HEIGHT = 120_000;
 /** Cells shorter than this (px) drop their inline label (kept on hover). */
 export const LABEL_MIN_PX = 13;
 /** Minimum vertical spacing between numeric-axis labels (px). */
@@ -24,12 +34,22 @@ export function frac(age: number, view: ViewWindow, mode: ScaleMode): number {
   return (age - view.young) / (view.old - view.young);
 }
 
+/** Inverse of {@link frac}: the age (Ma) at a 0..1 fraction of the view window. */
+export function ageAtFrac(f: number, view: ViewWindow, mode: ScaleMode): number {
+  if (mode === "log") {
+    const lo = Math.log(view.young + 1);
+    const hi = Math.log(view.old + 1);
+    return Math.exp(f * (hi - lo) + lo) - 1;
+  }
+  return view.young + f * (view.old - view.young);
+}
+
 /** Map an age (Ma) to a pixel y-coordinate (young at top). */
 export function yOf(
   age: number,
   view: ViewWindow,
   mode: ScaleMode,
-  height = CHART_HEIGHT,
+  height = DEFAULT_HEIGHT,
 ): number {
   return frac(age, view, mode) * height;
 }
@@ -45,7 +65,7 @@ export function cellBox(
   u: Unit,
   view: ViewWindow,
   mode: ScaleMode,
-  height = CHART_HEIGHT,
+  height = DEFAULT_HEIGHT,
 ): Box {
   const rawTop = yOf(u.end, view, mode, height);
   const rawBot = yOf(u.beginning, view, mode, height);

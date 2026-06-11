@@ -18,6 +18,9 @@ export interface UIStrings {
   searchPlaceholder: string;
   reset: string;
   zoom: string;
+  zoomIn: string;
+  zoomOut: string;
+  zoomLevel: string;
   zoomHint: string;
   ranks: RankInfo[]; // indexed by depth 0..6
   panel: {
@@ -55,7 +58,10 @@ const en: UIStrings = {
   searchPlaceholder: "Search intervals…",
   reset: "Reset view",
   zoom: "Zoom in",
-  zoomHint: "Click an interval for details · double-click to zoom in",
+  zoomIn: "Zoom in",
+  zoomOut: "Zoom out",
+  zoomLevel: "Zoom level",
+  zoomHint: "Click an interval for details · double-click or use the slider to zoom",
   ranks: [
     { title: "Supereon" },
     { title: "Eon", chrono: "Eonothem" },
@@ -100,7 +106,10 @@ const id: UIStrings = {
   searchPlaceholder: "Cari interval…",
   reset: "Atur ulang",
   zoom: "Perbesar",
-  zoomHint: "Klik interval untuk detail · klik dua kali untuk memperbesar",
+  zoomIn: "Perbesar",
+  zoomOut: "Perkecil",
+  zoomLevel: "Tingkat zoom",
+  zoomHint: "Klik interval untuk detail · klik dua kali atau geser slider untuk memperbesar",
   ranks: [
     { title: "Adi-Eon" },
     { title: "Eon", chrono: "Eonotem" },
