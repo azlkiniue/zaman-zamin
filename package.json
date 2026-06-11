@@ -1,0 +1,25 @@
+{
+  "name": "zaman-zamin",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "zamān zamīn — an interactive geological timescale (ICS International Chronostratigraphic Chart)",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "data": "bun run scripts/parse-chart.ts",
+    "prebuild": "bun run scripts/parse-chart.ts",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "n3": "^1.21.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.0"
+  }
+}

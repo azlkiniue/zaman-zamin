@@ -1,0 +1,194 @@
+---
+import Base from "../layouts/Base.astro";
+import data from "../data/timescale.json";
+import { ui } from "../lib/i18n";
+import { RANK_HEADER_X } from "../lib/layout";
+import type { TimescaleData } from "../lib/types";
+
+const { meta, units } = data as unknown as TimescaleData;
+const t = ui("en");
+const base = import.meta.env.BASE_URL;
+
+// Rank columns shown as sticky headers (Subperiod is omitted — it is rare and
+// reads clearly from its labels).
+const headerDepths = [0, 1, 2, 3, 5, 6];
+---
+
+<Base>
+  <div class="flex min-h-screen flex-col">
+    <!-- ╔══ Header ══╗ -->
+    <header
+      class="sticky top-0 z-30 border-b border-stone-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/75"
+    >
+      <div class="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
+        <!-- wordmark -->
+        <a href={base} class="group flex items-baseline gap-2.5 whitespace-nowrap">
+          <span
+            class="font-display text-2xl font-bold leading-none tracking-tight text-stone-900"
+            style="font-family: var(--font-sans)"
+          >
+            zamān&nbsp;zamīn
+          </span>
+          <span dir="rtl" lang="fa" class="text-lg leading-none text-stone-400" style="font-family: var(--font-display)"
+            >زمان زمین</span
+          >
+        </a>
+        <p class="hidden text-sm text-stone-500 md:block" data-i18n="tagline">{t.tagline}</p>
+
+        <!-- controls -->
+        <div class="ms-auto flex flex-wrap items-center gap-2 sm:gap-3">
+          <!-- search -->
+          <div class="relative">
+            <input
+              id="search"
+              type="search"
+              autocomplete="off"
+              placeholder={t.searchPlaceholder}
+              aria-label={t.search}
+              class="w-40 rounded-md border border-stone-300 bg-white py-1.5 pl-8 pr-2 text-sm shadow-sm outline-none transition focus:w-52 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/30 sm:w-48"
+            />
+            <svg class="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-stone-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="9" cy="9" r="6"></circle><path d="m18 18-4.5-4.5" stroke-linecap="round"></path>
+            </svg>
+            <ul
+              id="search-results"
+              class="absolute right-0 z-40 mt-1 hidden max-h-72 w-72 overflow-auto rounded-md border border-stone-200 bg-white py-1 text-sm shadow-lg"
+            ></ul>
+          </div>
+
+          <!-- scale toggle -->
+          <div
+            class="inline-flex rounded-md border border-stone-300 bg-stone-100 p-0.5 text-sm shadow-sm"
+            role="group"
+            aria-label={t.scale}
+          >
+            <button data-scale="log" class="ts-scale rounded px-2.5 py-1 font-medium transition">{t.log}</button>
+            <button data-scale="linear" class="ts-scale rounded px-2.5 py-1 font-medium transition">{t.linear}</button>
+          </div>
+
+          <!-- language -->
+          <label class="sr-only" for="lang">{t.language}</label>
+          <select
+            id="lang"
+            class="rounded-md border border-stone-300 bg-white py-1.5 pl-2 pr-7 text-sm shadow-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/30"
+          >
+            {meta.languages.map((l) => <option value={l.code}>{l.name}</option>)}
+          </select>
+
+          <!-- reset -->
+          <button
+            id="reset"
+            class="hidden rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm font-medium text-stone-600 shadow-sm transition hover:bg-stone-50"
+          >
+            {t.reset}
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ╔══ Main ══╗ -->
+    <main class="mx-auto flex w-full max-w-[1600px] flex-1 gap-0 px-0 sm:px-6 sm:py-4">
+      <!-- chart -->
+      <section class="min-w-0 flex-1">
+        <div class="overflow-hidden border-y border-stone-200 bg-white sm:rounded-lg sm:border sm:shadow-sm">
+          <div id="chart-scroll" class="ts-scroll h-[calc(100dvh-9rem)] overflow-auto sm:h-[calc(100dvh-7rem)]">
+            <div class="relative min-w-[700px]">
+              <!-- sticky rank headers -->
+              <div class="sticky top-0 z-20 flex border-b border-stone-200 bg-stone-50/95 backdrop-blur">
+                <div id="rank-headers" class="relative h-11 flex-1">
+                  {
+                    headerDepths.map((d) => (
+                      <div
+                        class:list={[
+                          "absolute top-0 flex h-11 flex-col justify-center leading-tight",
+                          d === 0 ? "items-start" : "-translate-x-1/2 items-center",
+                        ]}
+                        style={d === 0 ? "left:4px" : `left:${RANK_HEADER_X[d]}%`}
+                        data-rank-header={d}
+                      >
+                        <span class="text-[11px] font-semibold uppercase tracking-wide text-stone-600">
+                          {t.ranks[d].title}
+                        </span>
+                        {t.ranks[d].chrono && (
+                          <span class="text-[9px] uppercase tracking-wide text-stone-400">{t.ranks[d].chrono}</span>
+                        )}
+                      </div>
+                    ))
+                  }
+                </div>
+                <div
+                  class="flex w-16 shrink-0 flex-col items-center justify-center border-l border-stone-200 px-1 text-center leading-tight"
+                  title="Numerical age — millions of years ago (Ma)"
+                >
+                  <span class="text-[11px] font-semibold uppercase tracking-wide text-stone-600">Ma</span>
+                  <span class="text-[9px] uppercase tracking-wide text-stone-400">age</span>
+                </div>
+              </div>
+
+              <!-- chart body: canvas + numeric axis -->
+              <div class="flex">
+                <div id="canvas" class="relative flex-1"></div>
+                <div id="axis" class="relative w-16 shrink-0 border-l border-stone-200 bg-stone-50/40"></div>
+              </div>
+
+              <!-- loading skeleton (removed by JS) -->
+              <div id="chart-loading" class="absolute inset-0 flex items-center justify-center bg-white">
+                <div class="flex items-center gap-3 text-sm text-stone-400">
+                  <svg class="h-5 w-5 animate-spin text-teal-500" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z"></path>
+                  </svg>
+                  Rendering 4.6 billion years…
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="px-4 py-1.5 text-center text-xs text-stone-400 sm:px-0" data-i18n="zoomHint">{t.zoomHint}</p>
+      </section>
+
+      <!-- info panel -->
+      <aside
+        id="panel"
+        class="fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-auto rounded-t-2xl border-t border-stone-200 bg-white shadow-2xl lg:static lg:z-0 lg:ml-4 lg:max-h-none lg:w-80 lg:self-start lg:rounded-xl lg:border lg:shadow-sm"
+        aria-live="polite"
+      >
+        <div id="panel-body" class="p-5">
+          <p class="py-10 text-center text-sm text-stone-400" data-i18n="prompt">{t.panel.prompt}</p>
+        </div>
+      </aside>
+    </main>
+
+    <!-- ╔══ Footer ══╗ -->
+    <footer class="border-t border-stone-200 bg-white">
+      <div class="mx-auto w-full max-w-[1600px] px-4 py-4 text-xs leading-relaxed text-stone-500 sm:px-6">
+        <p>
+          <span class="font-medium text-stone-600">zamān zamīn</span> · {meta.title} ({meta.version}). Data from
+          <a class="text-teal-700 underline-offset-2 hover:underline" href={meta.data} target="_blank" rel="noopener"
+            >i-c-stratigraphy/chart</a
+          >, © International Commission on Stratigraphy, licensed
+          <a class="text-teal-700 underline-offset-2 hover:underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">{meta.license}</a>.
+        </p>
+        <p class="mt-1 text-stone-400">{meta.citation.en}</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- SSR semantic list for accessibility / search engines -->
+  <section class="sr-only">
+    <h2>Geological time intervals</h2>
+    <ul>
+      {
+        units.map((u) => (
+          <li>
+            {u.label.en} — {t.ranks[u.depth]?.title ?? u.rank}, {u.beginning}–{u.end} Ma
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <script>
+    import "../scripts/chart.ts";
+  </script>
+</Base>
