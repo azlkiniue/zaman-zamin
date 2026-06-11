@@ -10,6 +10,10 @@ import { DataFactory, Parser, Store, type Quad_Object, type Term } from "n3";
 const ROOT = new URL("..", import.meta.url).pathname;
 const TTL_PATH = `${ROOT}chart.ttl`;
 const OUT_PATH = `${ROOT}src/data/timescale.json`;
+// Fetched fresh on every build; override the branch/source with CHART_TTL_URL.
+const TTL_URL =
+  process.env.CHART_TTL_URL ||
+  "https://raw.githubusercontent.com/i-c-stratigraphy/chart/main/chart.ttl";
 
 // --- Vocabulary IRIs --------------------------------------------------------
 const NS = {
@@ -80,8 +84,38 @@ function textColorFor(hex: string): string {
   return L > 0.55 ? "#1b1b1b" : "#ffffff";
 }
 
-// --- parse ------------------------------------------------------------------
-const ttl = await Bun.file(TTL_PATH).text();
+// --- load source ------------------------------------------------------------
+// Always pull the freshest chart.ttl, caching it locally; fall back to the
+// cached copy when offline, and to the committed JSON if there is none.
+async function loadTtl(): Promise<string | null> {
+  try {
+    const res = await fetch(TTL_URL, {
+      headers: { "User-Agent": "zaman-zamin-build" },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!text.includes("ischart:") || !text.includes("skos:"))
+      throw new Error("response did not look like the chart Turtle");
+    await Bun.write(TTL_PATH, text); // cache for dev + offline fallback
+    console.log(`↓ fetched fresh chart.ttl (${(text.length / 1024).toFixed(0)} KiB) from ${TTL_URL}`);
+    return text;
+  } catch (err) {
+    console.warn(`! could not download chart.ttl: ${(err as Error).message}`);
+    const cached = Bun.file(TTL_PATH);
+    if (await cached.exists()) {
+      console.warn(`  falling back to cached ${TTL_PATH}`);
+      return cached.text();
+    }
+    return null;
+  }
+}
+
+const ttl = await loadTtl();
+if (ttl === null) {
+  console.warn(`! no chart.ttl available — keeping existing ${OUT_PATH}`);
+  process.exit(0);
+}
 const store = new Store(new Parser().parse(ttl));
 
 type Boundary = { mya: number; lex: string; error: number | null };

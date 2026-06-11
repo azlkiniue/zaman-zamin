@@ -48,16 +48,26 @@ bun run build    # regenerates data, then builds to ./dist (static HTML/CSS/JS)
 bun run preview  # serve the production build locally
 ```
 
-`bun run build` runs `scripts/parse-chart.ts` first (the `prebuild` hook), which
-converts [`chart.ttl`](./chart.ttl) into [`src/data/timescale.json`](./src/data/timescale.json).
+`bun run build` runs `scripts/parse-chart.ts` first (the `prebuild` hook). That
+script **downloads the latest `chart.ttl`** from the ICS repo, caches it locally,
+and converts it into [`src/data/timescale.json`](./src/data/timescale.json) — so
+every build (including CI) picks up the freshest chart automatically. If the
+download fails it falls back to the cached `chart.ttl`, then to the committed JSON,
+so builds never break offline.
 
 ## Updating the chart data
 
-When the ICS publishes a new chart, refresh the source and regenerate:
+Nothing to do — the data is fetched on every build. To refresh it on its own
+(e.g. during development) run:
 
 ```sh
-curl -sL https://raw.githubusercontent.com/i-c-stratigraphy/chart/main/chart.ttl -o chart.ttl
-bun run data     # re-parse chart.ttl -> src/data/timescale.json
+bun run data            # download chart.ttl + regenerate src/data/timescale.json
+```
+
+Point it at a different branch or mirror with the `CHART_TTL_URL` env var:
+
+```sh
+CHART_TTL_URL=https://example.org/chart.ttl bun run data
 ```
 
 ## Deploy
