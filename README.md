@@ -18,7 +18,7 @@ the bottom — but the data is the up-to-date set published at
 - **Logarithmic** (default) or **linear** time axis — log keeps the
   detail-dense Phanerozoic legible while still showing all 4.567 Ga.
 - **Click** any interval for a detail panel (rank, code, age span, duration,
-  GSSP status, parent/subdivisions, definition); **double-click** to zoom in.
+  GSSP status, parent/subdivisions, definition); **double-click** to zoom to fit.
 - **Search** (`/` to focus) and **deep links** (`#Jurassic` opens & zooms).
 - **26 languages** from the source data, with a fully localized UI in
   **English** and **Bahasa Indonesia**.

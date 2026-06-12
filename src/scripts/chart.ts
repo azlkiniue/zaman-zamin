@@ -135,7 +135,6 @@ function renderAxis() {
 // --- zoom -------------------------------------------------------------------
 const SLIDER_STEPS = 1000; // resolution of the zoom slider
 const ZOOM_STEP = 1.7; // × / ÷ per +/− button press
-const TARGET_FILL = 0.78; // a zoomed-to unit fills ~78% of the visible chart
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 /** Height of the sticky rank-header bar that overlays the top of the scroller. */
@@ -205,12 +204,16 @@ function select(id: string, opts: { scroll?: boolean } = {}) {
   if (opts.scroll) centerOnAge((byId.get(id)!.beginning + byId.get(id)!.end) / 2, true);
 }
 
-/** Zoom so a unit fills ~TARGET_FILL of the visible chart, then centre it. */
-function zoomToUnit(u: Unit) {
+/** Zoom so a unit fills the visible chart area ("zoom to fit"), then align it. */
+function zoomToFit(u: Unit) {
   const f = frac(u.beginning, FULL, mode) - frac(u.end, FULL, mode);
   selectedId = u.id; // set before applyHeight so the repaint marks it selected
-  applyHeight(f > 1e-9 ? (TARGET_FILL * usableH()) / f : MAX_HEIGHT);
-  centerOnAge((u.beginning + u.end) / 2);
+  applyHeight(f > 1e-9 ? usableH() / f : MAX_HEIGHT);
+  // Fit the unit to the visible band below the sticky header, aligned by its own
+  // pixel span — not its age-midpoint, which is off-centre on the log scale — so
+  // it sits flush top-to-bottom (and stays centred if the zoom hits MAX_HEIGHT).
+  const top = yOf(u.end, FULL, mode, chartHeight) - (usableH() - f * chartHeight) / 2;
+  scroller.scrollTop = clamp(top, 0, scroller.scrollHeight - scroller.clientHeight);
   syncSlider();
   openPanel(u);
   history.replaceState(null, "", `#${u.id}`);
@@ -270,14 +273,17 @@ function openPanel(u: Unit) {
       ${kids}
       <div class="ts-field"><dt>${t.panel.definition}</dt><dd class="text-stone-600 dark:text-stone-300">${esc(definitionFor(meta.definitionTemplates[lang] || meta.definitionTemplates.en, u.beginningStr, u.endStr))}</dd></div>
     </dl>
-    <div class="mt-4 flex items-center gap-3 border-t border-stone-100 pt-3 dark:border-stone-800">
-      <button type="button" id="panel-zoom" class="rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600">⤢ ${esc(t.zoom)}</button>
+    <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-stone-100 pt-3 dark:border-stone-800">
+      <button type="button" id="panel-zoom" class="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V4H8M16 8V4H12M4 12V16H8M16 12V16H12"/></svg>
+        <span>${esc(t.zoom)}</span>
+      </button>
       <a href="${meta.source}" target="_blank" rel="noopener" class="text-sm text-teal-700 underline-offset-2 hover:underline dark:text-teal-400">${t.panel.source} ↗</a>
     </div>`;
   panel.setAttribute("data-open", "true");
 
   $("#panel-close")?.addEventListener("click", closePanel);
-  $("#panel-zoom")?.addEventListener("click", () => zoomToUnit(u));
+  $("#panel-zoom")?.addEventListener("click", () => zoomToFit(u));
 }
 
 function closePanel() {
@@ -398,7 +404,7 @@ canvas.addEventListener("click", (e) => {
   lastClickId = isDouble ? null : id; // reset so a 3rd click starts fresh
   const u = byId.get(id);
   if (!u) return;
-  if (isDouble) zoomToUnit(u);
+  if (isDouble) zoomToFit(u);
   else select(id);
 });
 canvas.addEventListener("mousemove", (e) => {
@@ -552,6 +558,6 @@ syncSlider();
 const hashId = decodeURIComponent(location.hash.slice(1));
 if (hashId && byId.has(hashId)) {
   const u = byId.get(hashId)!;
-  if (u.depth >= 3) zoomToUnit(u);
+  if (u.depth >= 3) zoomToFit(u);
   else select(u.id, { scroll: true });
 }
