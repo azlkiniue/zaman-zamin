@@ -2,16 +2,18 @@ import type { ScaleMode, Unit, ViewWindow } from "./types";
 
 /**
  * Default vertical zoom of the scrollable drawing canvas (px). Young time at the
- * top. Zoom is expressed purely as canvas height: taller = zoomed in. The age
- * window always spans the full timeline, so the log/linear mapping stays exact
- * at every zoom level (no faked cell sizes).
+ * top, old at the bottom. Zoom is expressed purely as canvas height: taller =
+ * zoomed in. The age window always spans the full timeline and the log/linear
+ * mapping is exact at every level — cells are always strictly to scale.
+ *
+ * The default is deliberately tall so that on first load — in the default
+ * logarithmic scale, scrolled to the top — the Holocene epoch and its ~4 kyr
+ * sub-stages (down to the Greenlandian) are large enough to show their labels.
+ * Deep time is then a scroll, or a zoom-out, away.
  */
-export const DEFAULT_HEIGHT = 4600;
-/**
- * Deepest zoom-in (px). Tall enough that even the ~4 kyr Holocene sub-stages
- * become legible and labelled, while keeping the scroll height manageable.
- */
-export const MAX_HEIGHT = 120_000;
+export const DEFAULT_HEIGHT = 36_000;
+/** Deepest zoom-in (px). */
+export const MAX_HEIGHT = 18_000_000;
 /** Cells shorter than this (px) drop their inline label (kept on hover). */
 export const LABEL_MIN_PX = 13;
 /** Minimum vertical spacing between numeric-axis labels (px). */

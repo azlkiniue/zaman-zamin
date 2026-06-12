@@ -471,9 +471,8 @@ scroller.addEventListener(
     );
     applyHeight(chartHeight * Math.exp(-e.deltaY * 0.0015));
     // keep cursorAge pinned under the cursor
-    const yc = yOf(cursorAge, FULL, mode, chartHeight);
     scroller.scrollTop = clamp(
-      headerH() + yc - cursorY,
+      headerH() + yOf(cursorAge, FULL, mode, chartHeight) - cursorY,
       0,
       scroller.scrollHeight - scroller.clientHeight,
     );
