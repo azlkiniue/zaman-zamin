@@ -41,6 +41,8 @@ export interface UIStrings {
   };
   ma: string;
   myr: string;
+  /** Plain-language age words (e.g. "2.58 million years"). */
+  age: { years: string; million: string; billion: string };
   present: string;
   noResults: string;
   dataNote: string;
@@ -89,6 +91,7 @@ const en: UIStrings = {
   },
   ma: "Ma",
   myr: "Myr",
+  age: { years: "years", million: "million", billion: "billion" },
   present: "present",
   noResults: "No matching intervals",
   dataNote: "Data: ICS International Chronostratigraphic Chart",
@@ -137,6 +140,7 @@ const id: UIStrings = {
   },
   ma: "Ma", // mega-annum — used in Indonesian geology too
   myr: "juta tahun",
+  age: { years: "tahun", million: "juta", billion: "miliar" },
   present: "sekarang",
   noResults: "Tidak ada interval yang cocok",
   dataNote: "Data: Bagan Kronostratigrafi Internasional ICS",

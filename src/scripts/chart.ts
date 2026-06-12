@@ -4,10 +4,14 @@ import {
   DEFAULT_HEIGHT,
   LABEL_MIN_PX,
   MAX_HEIGHT,
+  type AgeWords,
   ageAtFrac,
   cellBox,
+  compactAge,
   formatMa,
   frac,
+  humanAge,
+  humanSpan,
   labelBand,
   yOf,
 } from "../lib/layout";
@@ -23,8 +27,9 @@ const byId = new Map<string, Unit>(units.map((u) => [u.id, u]));
 const bandCache = new Map<string, { left: number; right: number }>();
 for (const u of units) bandCache.set(u.id, labelBand(u, byId));
 
-// Map each boundary value to its original lexical string so the axis and panel
-// display the exact ICS precision (e.g. 251.902, 66.00, 0.0117).
+// Map each boundary value to its original lexical string so the panel can show
+// the exact ICS precision (e.g. 251.902, 66.00, 0.0117) alongside the
+// plain-language age. The axis uses adaptive units (compactAge) instead.
 const maLex = new Map<number, string>();
 for (const u of units) {
   maLex.set(u.beginning, u.beginningStr);
@@ -71,10 +76,14 @@ const rankTitle = (u: Unit) => ui(lang).ranks[u.depth]?.title ?? u.rank;
 const wikipediaUrl = (u: Unit) =>
   `https://en.wikipedia.org/wiki/${encodeURIComponent((u.label.en || u.id).replace(/ /g, "_"))}`;
 
-function spanText(u: Unit): string {
+/** Plain-language age words for the current language. */
+function ageWords(): AgeWords {
   const t = ui(lang);
-  const young = u.end === 0 ? t.present : maStr(u.end);
-  return `${maStr(u.beginning)} – ${young} ${t.ma}`;
+  return { ...t.age, present: t.present, locale: lang };
+}
+
+function spanText(u: Unit): string {
+  return humanSpan(u.beginning, u.end, ageWords());
 }
 
 const isZoomed = () => Math.abs(chartHeight - DEFAULT_HEIGHT) > 1;
@@ -139,7 +148,7 @@ function renderAxis() {
     .map(
       (t) =>
         `<div class="ts-tick${t.strong ? " ts-tick-strong" : ""}" style="top:${t.y.toFixed(2)}px">` +
-        `<span class="ts-tick-line"></span><span class="ts-tick-label">${maStr(t.v)}</span></div>`,
+        `<span class="ts-tick-line"></span><span class="ts-tick-label">${compactAge(t.v, lang)}</span></div>`,
     )
     .join("");
 }
@@ -279,8 +288,8 @@ function openPanel(u: Unit) {
       <span class="ts-badge ts-badge-rank">${esc(rankTitle(u))}</span>${code}${gssp}
     </div>
     <dl class="space-y-2.5 text-sm">
-      <div class="ts-field"><dt>${t.panel.span}</dt><dd class="font-medium tabular-nums">${maStr(u.beginning)}${beginErr} – ${young} ${t.ma}</dd></div>
-      <div class="ts-field"><dt>${t.panel.duration}</dt><dd class="tabular-nums">${formatMa(duration)} ${t.myr}</dd></div>
+      <div class="ts-field"><dt>${t.panel.span}</dt><dd class="font-medium tabular-nums">${humanSpan(u.beginning, u.end, ageWords())}<span class="mt-0.5 block text-xs font-normal text-stone-400 dark:text-stone-500">${maStr(u.beginning)}${beginErr} – ${young} ${t.ma}</span></dd></div>
+      <div class="ts-field"><dt>${t.panel.duration}</dt><dd class="tabular-nums">${humanAge(duration, ageWords())}</dd></div>
       ${parent}
       ${kids}
       <div class="ts-field"><dt>${t.panel.definition}</dt><dd class="text-stone-600 dark:text-stone-300">${esc(definitionFor(meta.definitionTemplates[lang] || meta.definitionTemplates.en, u.beginningStr, u.endStr))}</dd></div>

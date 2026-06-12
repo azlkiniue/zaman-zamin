@@ -109,3 +109,65 @@ export function formatMa(v: number): string {
   if (v < 100) return v.toFixed(1);
   return v.toFixed(0);
 }
+
+const fmt = (v: number, max: number, locale: string) =>
+  v.toLocaleString(locale, { maximumFractionDigits: max });
+
+/**
+ * Compact age for the numeric axis, using the standard geological SI units so
+ * sub-million-year values stay legible: thousand (ka), million (Ma), billion
+ * (Ga) years. e.g. 0.0117 → "11.7 ka", 251.902 → "252 Ma", 4567 → "4.6 Ga".
+ */
+export function compactAge(ma: number, locale = "en"): string {
+  if (ma === 0) return "0";
+  if (ma < 1) {
+    const ka = (ma * 1e6) / 1000;
+    return `${fmt(ka, ka < 100 ? 1 : 0, locale)} ka`;
+  }
+  if (ma < 1000) {
+    return `${fmt(ma, ma < 10 ? 2 : ma < 100 ? 1 : 0, locale)} Ma`;
+  }
+  return `${fmt(ma / 1000, 1, locale)} Ga`;
+}
+
+/** Translatable words for the long-form, plain-language age. */
+export interface AgeWords {
+  years: string;
+  million: string;
+  billion: string;
+  present: string;
+  locale: string;
+}
+
+/** A value split into its number and unit so spans can share a common unit. */
+function ageParts(ma: number, w: AgeWords): { num: string; unit: string; band: number } {
+  if (ma < 1) {
+    // Under a million years reads best as a plain year count: "11,700 years".
+    const years = Math.round((ma * 1e6) / 100) * 100;
+    return { num: fmt(years, 0, w.locale), unit: w.years, band: 0 };
+  }
+  if (ma < 1000) {
+    return { num: fmt(ma, ma < 10 ? 2 : 1, w.locale), unit: `${w.million} ${w.years}`, band: 1 };
+  }
+  return { num: fmt(ma / 1000, 2, w.locale), unit: `${w.billion} ${w.years}`, band: 2 };
+}
+
+/** A single age in plain language, e.g. "11,700 years" or "2.58 million years". */
+export function humanAge(ma: number, w: AgeWords): string {
+  if (ma === 0) return w.present;
+  const p = ageParts(ma, w);
+  return `${p.num} ${p.unit}`;
+}
+
+/**
+ * An age span in plain language. Ends sharing a magnitude share the unit
+ * ("251.9 – 247.2 million years"); ends that differ keep their own so the young
+ * end stays legible ("2.58 million years – 11,700 years").
+ */
+export function humanSpan(begin: number, end: number, w: AgeWords): string {
+  const b = ageParts(begin, w);
+  if (end === 0) return `${b.num} ${b.unit} – ${w.present}`;
+  const e = ageParts(end, w);
+  if (b.band === e.band) return `${b.num} – ${e.num} ${b.unit}`;
+  return `${b.num} ${b.unit} – ${e.num} ${e.unit}`;
+}
