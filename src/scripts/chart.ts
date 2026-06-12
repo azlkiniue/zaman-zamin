@@ -78,12 +78,18 @@ const isZoomed = () => Math.abs(chartHeight - DEFAULT_HEIGHT) > 1;
 // --- chart render -----------------------------------------------------------
 function render() {
   const html: string[] = [];
+  // Label bands are sized as a % of the drawing area; convert to px so we can
+  // compare against the box height and rotate by actual shape, not rank depth.
+  const canvasW = canvas.clientWidth;
   for (const u of units) {
     const box = cellBox(u, FULL, mode, chartHeight);
     if (!box.visible) continue;
     const band = bandCache.get(u.id)!;
     const width = band.right - band.left;
-    const rot = u.depth <= 4 ? " ts-rot" : "";
+    // Rotate the label only in portrait cells (taller than wide); landscape
+    // cells keep horizontal text. Fall back to depth if width is unmeasured.
+    const widthPx = (width / 100) * canvasW;
+    const rot = (canvasW ? box.height > widthPx : u.depth <= 4) ? " ts-rot" : "";
     const sel = u.id === selectedId ? " ts-selected" : "";
     const showLabel = box.height >= LABEL_MIN_PX;
     const name = esc(nameOf(u));
