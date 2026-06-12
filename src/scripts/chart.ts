@@ -95,15 +95,17 @@ function render() {
     const name = esc(nameOf(u));
     html.push(
       `<button type="button" class="ts-cell${rot}${sel}" data-id="${u.id}" ` +
-        `style="top:${box.top.toFixed(2)}px;height:${box.height.toFixed(2)}px;` +
-        `left:${band.left}%;width:${width}%;--bg:${u.color};color:${u.textColor}" ` +
-        `aria-label="${name}, ${esc(rankTitle(u))}, ${esc(spanText(u))}">` +
-        (showLabel ? `<span class="ts-label">${name}</span>` : "") +
-        `</button>`,
+      `style="top:${box.top.toFixed(2)}px;height:${box.height.toFixed(2)}px;` +
+      `left:${band.left}%;width:${width}%;--bg:${u.color};color:${u.textColor}" ` +
+      `aria-label="${name}, ${esc(rankTitle(u))}, ${esc(spanText(u))}">` +
+      (showLabel ? `<span class="ts-label">${name}</span>` : "") +
+      `</button>`,
     );
   }
   canvas.style.height = `${chartHeight}px`;
   axis.style.height = `${chartHeight}px`;
+  // Sticky labels park just below the sticky rank-header; expose its height.
+  canvas.style.setProperty("--ts-header-h", `${headerH() + 4}px`);
   canvas.innerHTML = html.join("");
   renderAxis();
   $("#chart-loading")?.remove();

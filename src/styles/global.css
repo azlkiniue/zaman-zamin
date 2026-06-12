@@ -86,7 +86,9 @@ html {
   align-items: center;
   justify-content: center;
   padding: 0 2px;
-  overflow: hidden;
+  /* No overflow clipping here: that would make the cell its own scroll
+     container and trap the sticky label below. The label self-clips
+     (max-width/height + overflow + ellipsis), so cropping isn't needed. */
   background: var(--bg);
   border: 0.5px solid var(--cell-stroke);
   cursor: pointer;
@@ -106,6 +108,13 @@ html {
   /* z-index: 40; */
 }
 .ts-label {
+  /* Stay inside the visible chart band so a tall cell never loses its label:
+     the label rides down from just under the sticky rank-header (--ts-header-h)
+     and up from the bottom edge, clamped to its own cell. When the whole cell
+     fits, the flex centering on .ts-cell still places it naturally. */
+  position: sticky;
+  top: var(--ts-header-h, 45px);
+  bottom: 4px;
   pointer-events: none;
   max-width: 100%;
   max-height: 100%;
