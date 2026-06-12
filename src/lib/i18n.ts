@@ -34,7 +34,7 @@ export interface UIStrings {
     ratified: string;
     pending: string;
     definition: string;
-    source: string;
+    wikipedia: string;
     close: string;
     prompt: string;
     none: string;
@@ -82,7 +82,7 @@ const en: UIStrings = {
     ratified: "Ratified",
     pending: "Not yet defined",
     definition: "Definition",
-    source: "View on stratigraphy.org",
+    wikipedia: "View on Wikipedia",
     close: "Close",
     prompt: "Select an interval on the chart to see its details.",
     none: "—",
@@ -130,7 +130,7 @@ const id: UIStrings = {
     ratified: "Disahkan",
     pending: "Belum ditetapkan",
     definition: "Definisi",
-    source: "Lihat di stratigraphy.org",
+    wikipedia: "Lihat di Wikipedia",
     close: "Tutup",
     prompt: "Pilih interval pada bagan untuk melihat detailnya.",
     none: "—",

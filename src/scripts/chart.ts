@@ -66,6 +66,10 @@ const esc = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const nameOf = (u: Unit) => u.label[lang] || u.label.en || u.id;
 const rankTitle = (u: Unit) => ui(lang).ranks[u.depth]?.title ?? u.rank;
+// English Wikipedia has reliable articles (or redirects) for every ICS interval,
+// so we always link the English name regardless of the UI language.
+const wikipediaUrl = (u: Unit) =>
+  `https://en.wikipedia.org/wiki/${encodeURIComponent((u.label.en || u.id).replace(/ /g, "_"))}`;
 
 function spanText(u: Unit): string {
   const t = ui(lang);
@@ -286,7 +290,7 @@ function openPanel(u: Unit) {
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V4H8M16 8V4H12M4 12V16H8M16 12V16H12"/></svg>
         <span>${esc(t.zoom)}</span>
       </button>
-      <a href="${meta.source}" target="_blank" rel="noopener" class="text-sm text-teal-700 underline-offset-2 hover:underline dark:text-teal-400">${t.panel.source} ↗</a>
+      <a href="${wikipediaUrl(u)}" target="_blank" rel="noopener" class="text-sm text-teal-700 underline-offset-2 hover:underline dark:text-teal-400">${t.panel.wikipedia} ↗</a>
     </div>`;
   panel.setAttribute("data-open", "true");
 
