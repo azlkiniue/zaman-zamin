@@ -281,7 +281,7 @@ const langList = [...languages].sort((a, b) =>
 const out = {
   meta: {
     title: "ICS International Chronostratigraphic Chart",
-    version: "2024-12",
+    version: "2026-06",
     source: "https://stratigraphy.org/chart",
     data: "https://github.com/i-c-stratigraphy/chart",
     license: "CC-BY 4.0",
